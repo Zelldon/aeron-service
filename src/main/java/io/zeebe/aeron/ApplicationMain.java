@@ -123,11 +123,11 @@ public class ApplicationMain {
 
     // start up
 //    container = launchEchoService();
-    ClusteredServiceContainer.launch(
-      new ClusteredServiceContainer.Context()
-        .clusteredService(new JobExpireService())
-        .errorHandler(Throwable::printStackTrace)
-        .deleteDirOnStart(true));
+//    ClusteredServiceContainer.launch(
+//      new ClusteredServiceContainer.Context()
+//        .clusteredService(new JobExpireService())
+//        .errorHandler(Throwable::printStackTrace)
+//        .deleteDirOnStart(true));
 
 //
     ClusteredServiceContainer.launch(
