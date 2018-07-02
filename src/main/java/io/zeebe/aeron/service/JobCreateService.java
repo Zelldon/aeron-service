@@ -10,16 +10,15 @@ import io.aeron.logbuffer.Header;
 import io.zeebe.aeron.StubClusteredService;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableArrayBuffer;
+import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.NoOpLock;
+
+import java.util.HashMap;
 
 public class JobCreateService extends StubClusteredService {
 
+  private final Long2ObjectHashMap currentJobs = new Long2ObjectHashMap<>();
   private AeronCluster clientCluster;
-
-  long clusterSessionId;
-  long correlationId;
-  String msg;
-  // simply echos cmd
 
   @Override
   public void onSessionMessage(
@@ -39,44 +38,32 @@ public class JobCreateService extends StubClusteredService {
     {
       // echo as ack
       final ClientSession session = cluster.getClientSession(clusterSessionId);
-      System.out.printf("\necho message %s", msg);
+      System.out.printf("\nJob create %s", msg);
       while (session.offer(correlationId, buffer, offset, length) < 0) {
         Thread.yield();
       }
 
-      if (clientCluster == null)
-      {
-        clientCluster = AeronCluster.connect(
-          new AeronCluster.Context().aeron(cluster.aeron()));
-      }
-
       // write job created
-      final Aeron aeron = clientCluster.context().aeron();
-      final SessionDecorator sessionDecorator = new SessionDecorator(clientCluster.clusterSessionId());
-      final Publication publication = clientCluster.ingressPublication();
-
-      final ExpandableArrayBuffer msgBuffer = new ExpandableArrayBuffer();
-      final long msgCorrelationId = aeron.nextCorrelationId();
-      final String newMessage = "WORLD_CREATED";
-      msgBuffer.putInt(0, MessageIdentifier.JOB_CREATED.ordinal());
-      msgBuffer.putStringWithoutLengthAscii(4, msg);
-
-      // client sends message
-      while (sessionDecorator.offer(publication, msgCorrelationId, msgBuffer, 0, msg.length() + 4) < 0)
-      {
-        Thread.yield();
-      }
-
+      final long newCorrelationId = cluster.aeron().nextCorrelationId();
+      sendMessage(msg, newCorrelationId, MessageIdentifier.JOB_CREATED);
     }
     else if (messageIdentifier == MessageIdentifier.JOB_CREATED)
     {
-      this.clusterSessionId = clusterSessionId;
-      this.correlationId = correlationId;
+      System.out.printf("\nJob created %s\n", msg);
+      final long newCorrelationId = cluster.aeron().nextCorrelationId();
 
-      System.out.println("Add timer for job");
-      if (!cluster.scheduleTimer(correlationId, timestampMs + 100)) {
+      // store job
+      currentJobs.put(newCorrelationId, new Job());
+
+      System.out.println("Schedule expiration timer for job");
+      if (!cluster.scheduleTimer(newCorrelationId, timestampMs + 100)) {
         throw new IllegalStateException("unexpected back pressure");
       }
+    }
+    else if (messageIdentifier == MessageIdentifier.JOB_EXPIRED)
+    {
+
+
     }
     else
     {
@@ -84,21 +71,40 @@ public class JobCreateService extends StubClusteredService {
     }
   }
 
-
   public void onTimerEvent(final long correlationId, final long timestampMs) {
     // timer has fired
-    System.out.println("Timer fired!!!");
-    // write JOB EXPIRED
+    System.out.println("Job expired!");
+    Job expiredJob = (Job) currentJobs.remove(correlationId);
 
-//
-//
-//    final String responseMsg = msg + "-scheduled";
-//    final ExpandableArrayBuffer buffer = new ExpandableArrayBuffer();
-//    buffer.putStringWithoutLengthAscii(0, responseMsg);
-//    final ClientSession clientSession = cluster.getClientSession(clusterSessionId);
-//
-//    while (clientSession.offer(correlationId, buffer, 0, responseMsg.length()) < 0) {
-//      Thread.yield();
-//    }
+    System.out.println("Correlation id " + correlationId + " job started at " + expiredJob.getCreationTime());
+
+    final long newCorrelationId = cluster.aeron().nextCorrelationId();
+    sendMessage("Expired", newCorrelationId, MessageIdentifier.JOB_EXPIRED);
   }
+
+  private void sendMessage(String msg, long correlationId, MessageIdentifier identifier) {
+    if (clientCluster == null)
+    {
+      clientCluster = AeronCluster.connect(
+        new AeronCluster.Context().aeron(cluster.aeron()));
+    }
+
+    // write job created
+    final Aeron aeron = clientCluster.context().aeron();
+    final SessionDecorator sessionDecorator = new SessionDecorator(clientCluster.clusterSessionId());
+    final Publication publication = clientCluster.ingressPublication();
+
+    final ExpandableArrayBuffer msgBuffer = new ExpandableArrayBuffer();
+    msgBuffer.putInt(0, identifier.ordinal());
+    msgBuffer.putStringWithoutLengthAscii(4, msg);
+
+    // client sends message
+    while (sessionDecorator.offer(publication, correlationId, msgBuffer, 0, msg.length() + 4) < 0)
+    {
+      Thread.yield();
+    }
+  }
+
+
+
 }

@@ -74,6 +74,7 @@ public class ApplicationMain {
                 throw new IllegalStateException();
               }
 
+
               String message = buffer.getStringWithoutLengthAscii(offset + 4, length - 4);
               System.out.printf("\nClient on message %s", message);
 

@@ -37,6 +37,7 @@ public class StubClusteredService implements ClusteredService
 
   public void onSessionOpen(final ClientSession session, final long timestampMs)
   {
+    System.out.println();
     System.out.println("Session opened.");
   }
 
