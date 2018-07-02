@@ -30,15 +30,22 @@ public class StubClusteredService implements ClusteredService
 
   public void onStart(final Cluster cluster)
   {
+    System.out.println("Cluster starts ");
+    System.out.println("Current role " + cluster.role());
     this.cluster = cluster;
   }
 
   public void onSessionOpen(final ClientSession session, final long timestampMs)
   {
+    System.out.println("Session opened.");
   }
 
   public void onSessionClose(final ClientSession session, final long timestampMs, final CloseReason closeReason)
   {
+    System.out.println();
+    System.out.println("Session closed: " + closeReason);
+    cluster.aeron().printCounters(System.out);
+
   }
 
   public void onSessionMessage(
@@ -54,29 +61,36 @@ public class StubClusteredService implements ClusteredService
 
   public void onTimerEvent(final long correlationId, final long timestampMs)
   {
+    System.out.println("Timer event.");
   }
 
   public void onTakeSnapshot(final Publication snapshotPublication)
   {
+    System.out.println("Take snapshot.");
   }
 
   public void onLoadSnapshot(final Image snapshotImage)
   {
+    System.out.println("Load snapshot.");
   }
 
   public void onReplayBegin()
   {
+    System.out.println("Replay starts");
   }
 
   public void onReplayEnd()
   {
+    System.out.println("Replay ends.");
   }
 
   public void onRoleChange(final Cluster.Role newRole)
   {
+    System.out.println("Role changes to " + newRole);
   }
 
   public void onReady()
   {
+    System.out.println("On Ready");
   }
 }
