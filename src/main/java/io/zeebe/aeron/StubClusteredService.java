@@ -45,7 +45,7 @@ public class StubClusteredService implements ClusteredService
   {
     System.out.println();
     System.out.println("Session closed: " + closeReason);
-    cluster.aeron().printCounters(System.out);
+//    cluster.aeron().printCounters(System.out);
 
   }
 
