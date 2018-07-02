@@ -94,7 +94,7 @@ public class ApplicationMain {
           aeronCluster.egressSubscription(),
           FRAGMENT_LIMIT);
 
-      while (messageCount.get() == 0)
+      while (true)
       {
         if (adapter.poll() <= 0)
         {
@@ -103,7 +103,7 @@ public class ApplicationMain {
       }
 
       // tear down
-      tearDown();
+//      tearDown();
     }
 
   private static void init() {
