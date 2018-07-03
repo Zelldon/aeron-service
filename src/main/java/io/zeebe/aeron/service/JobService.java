@@ -35,11 +35,6 @@ public class JobService extends StubClusteredService {
       int offset,
       int length,
       Header header) {
-
-//	  if (currentRole != Role.LEADER) {
-//		  // TODO also update state on follower
-//		  return;
-//	  }
 	  
     final MessageIdentifier messageIdentifier = MessageIdentifier.values()[buffer.getInt(offset)];
     switch (messageIdentifier)
@@ -131,6 +126,7 @@ public class JobService extends StubClusteredService {
   }
 
   private void sendMessage(long correlationId, MessageIdentifier identifier) {
+	  //FIXME this is wrong :/
 //    if (clientCluster == null)
 //    {
 //      clientCluster = AeronCluster.connect(
@@ -153,6 +149,7 @@ public class JobService extends StubClusteredService {
   }
 
   private void sendMessage(Job job, long correlationId) {
+	//FIXME this is wrong :/
 //    if (clientCluster == null)
 //    {
 //      clientCluster = AeronCluster.connect(
