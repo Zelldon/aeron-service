@@ -67,7 +67,7 @@ public class JobClient {
                   job.fromBuffer(buffer, offset, length);
                   handler.accept(job);
                 } else {
-                  System.out.println("ignored");
+//                  System.out.println("ignored");
                 }
               }
 

@@ -114,10 +114,10 @@ public class JobService extends StubClusteredService {
   @Override
   public void onTimerEvent(final long correlationId, final long timestampMs) {
     // timer has fired
-    System.out.println("Job expired!");
+//    System.out.println("Job expired!");
     Job expiredJob = (Job) currentJobs.remove(correlationId);
 
-    System.out.println("Correlation id " + correlationId + " job started at " + expiredJob.getCreationTime());
+//    System.out.println("Correlation id " + correlationId + " job started at " + expiredJob.getCreationTime());
 
     final long newCorrelationId = cluster.aeron().nextCorrelationId();
     sendMessage(newCorrelationId, MessageIdentifier.JOB_EXPIRED);

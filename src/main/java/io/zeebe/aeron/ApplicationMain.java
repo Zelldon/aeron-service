@@ -37,7 +37,7 @@ public class ApplicationMain {
       // test
       new Thread(() ->
       {
-        for (int i = 0; i < COUNT; i++)
+        for (int i = 0; i < 5; i++)
         {
           jobClient.createJob();
         }
