@@ -9,12 +9,13 @@ import io.aeron.driver.MediaDriver;
 import io.aeron.driver.ThreadingMode;
 import io.zeebe.aeron.client.JobClient;
 import io.zeebe.aeron.client.ZbClient;
-import io.zeebe.aeron.service.JobCreateService;
+import io.zeebe.aeron.service.JobService;
 import org.agrona.CloseHelper;
 
 public class ApplicationMain {
 
     private static final long MAX_CATALOG_ENTRIES = 1024;
+    private static final int COUNT = 10_000;
 
     private static ClusteredMediaDriver clusteredMediaDriver;
 
@@ -26,12 +27,22 @@ public class ApplicationMain {
       // create client
       final JobClient jobClient = ZbClient.newClient().jobClient();
 
-      // test
-      jobClient.createJob();
-
+      // subscribe
       jobClient.subscribe((job -> {
         System.out.println("Received job on client.");
+        jobClient.completeJob(job);
       }));
+
+
+      // test
+      new Thread(() ->
+      {
+        for (int i = 0; i < COUNT; i++)
+        {
+          jobClient.createJob();
+        }
+      }).start();
+
 
       while (true);
 
@@ -64,7 +75,7 @@ public class ApplicationMain {
 
     ClusteredServiceContainer.launch(
       new ClusteredServiceContainer.Context()
-        .clusteredService(new JobCreateService())
+        .clusteredService(new JobService())
         .errorHandler(Throwable::printStackTrace)
         .deleteDirOnStart(true));
   }
