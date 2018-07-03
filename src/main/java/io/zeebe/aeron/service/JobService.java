@@ -14,6 +14,7 @@ import org.agrona.collections.Long2ObjectHashMap;
 
 public class JobService extends StubClusteredService {
 
+
   private final Long2ObjectHashMap currentJobs = new Long2ObjectHashMap<>();
   private AeronCluster clientCluster;
   private JobSubscriptionManager jobSubscriptionManager;
@@ -38,14 +39,14 @@ public class JobService extends StubClusteredService {
     switch (messageIdentifier)
     {
       case JOB_CREATE:
-        jobCreate(clusterSessionId, correlationId, buffer, offset, length);
+        jobCreate(timestampMs, clusterSessionId, correlationId, buffer, offset, length);
         break;
       case JOB_CREATED:
         jobCreated(timestampMs);
         break;
 
       case JOB_COMPLETE:
-        System.out.println("Got job complete from client!");
+        logMessage(timestampMs, "Got job complete from client!");
         // client completes job
 
         break;
@@ -71,18 +72,17 @@ public class JobService extends StubClusteredService {
 
         break;
       case SUBSCRIBED:
-
+        logMessage(timestampMs, "Subscribed successfully!");
         for (Object value : currentJobs.values())
         {
           jobSubscriptionManager.assign((Job) value);
         }
-        System.out.println("Subscribed successfully!");
         break;
     }
   }
 
   private void jobCreated(long timestampMs) {
-    System.out.println("Job created.");
+    logMessage(timestampMs, "Job created.");
     final long newCorrelationId = cluster.aeron().nextCorrelationId();
 
     // store job
@@ -91,16 +91,17 @@ public class JobService extends StubClusteredService {
     currentJobs.put(newCorrelationId, job);
     jobSubscriptionManager.assign(job);
 
-    System.out.println("Schedule expiration timer for job");
+    logMessage(timestampMs, "Schedule expiration timer for job");
     if (!cluster.scheduleTimer(newCorrelationId, timestampMs + 10_000)) {
       throw new IllegalStateException("unexpected back pressure");
     }
   }
 
-  private void jobCreate(long clusterSessionId, long correlationId, DirectBuffer buffer, int offset, int length) {
+  private void jobCreate(long timestampMs, long clusterSessionId, long correlationId, DirectBuffer buffer, int offset, int length) {
     // echo as ack
+    logMessage(timestampMs, "Job create.");
+
     final ClientSession session = cluster.getClientSession(clusterSessionId);
-    System.out.printf("\nJob create.");
     while (session.offer(correlationId, buffer, offset, length) < 0) {
       Thread.yield();
     }
@@ -163,6 +164,5 @@ public class JobService extends StubClusteredService {
       Thread.yield();
     }
   }
-
 
 }

@@ -24,27 +24,31 @@ import io.aeron.cluster.service.ClusteredService;
 import io.aeron.logbuffer.Header;
 import org.agrona.DirectBuffer;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class StubClusteredService implements ClusteredService
 {
+  private static final String MESSAGE_FRAME = "[%s]: %s";
+  private final static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("hh:mm:ss:SS");
+
   protected Cluster cluster;
 
   public void onStart(final Cluster cluster)
   {
-    System.out.println("Cluster starts ");
-    System.out.println("Current role " + cluster.role());
+    logMessage(cluster.timeMs(), "Cluster starts ");
+    logMessage(cluster.timeMs(), "Current role " + cluster.role());
     this.cluster = cluster;
   }
 
   public void onSessionOpen(final ClientSession session, final long timestampMs)
   {
-    System.out.println();
-    System.out.println("Session opened.");
+    logMessage(timestampMs, "Opened session " + session.id());
   }
 
   public void onSessionClose(final ClientSession session, final long timestampMs, final CloseReason closeReason)
   {
-    System.out.println();
-    System.out.println("Session closed: " + closeReason);
+    logMessage(timestampMs, "Closed session " + session.id() + " reason: " + closeReason);
 //    cluster.aeron().printCounters(System.out);
 
   }
@@ -67,31 +71,37 @@ public class StubClusteredService implements ClusteredService
 
   public void onTakeSnapshot(final Publication snapshotPublication)
   {
-    System.out.println("Take snapshot.");
+    logMessage(cluster.timeMs(), "Take snapshot.");
   }
 
   public void onLoadSnapshot(final Image snapshotImage)
   {
-    System.out.println("Load snapshot.");
+    logMessage(cluster.timeMs(), "Load snapshot.");
   }
 
   public void onReplayBegin()
   {
-    System.out.println("Replay starts");
+    logMessage(cluster.timeMs(), "Replay starts");
   }
 
   public void onReplayEnd()
   {
-    System.out.println("Replay ends.");
+    logMessage(cluster.timeMs(), "Replay ends.");
   }
 
   public void onRoleChange(final Cluster.Role newRole)
   {
-    System.out.println("Role changes to " + newRole);
+    logMessage(cluster.timeMs(), "Role changes to " + newRole);
   }
 
   public void onReady()
   {
-    System.out.println("On Ready");
+    logMessage(cluster.timeMs(), "On Ready");
   }
+
+  public static void logMessage(long ms, String body)
+  {
+    System.out.println(String.format(MESSAGE_FRAME, DATE_FORMAT.format(new Date(ms)), body));
+  }
+
 }
