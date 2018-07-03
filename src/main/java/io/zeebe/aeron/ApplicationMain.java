@@ -11,7 +11,7 @@ import io.aeron.driver.MediaDriver;
 import io.aeron.driver.ThreadingMode;
 import io.zeebe.aeron.client.JobClient;
 import io.zeebe.aeron.client.ZbClient;
-import io.zeebe.aeron.service.JobCreateService;
+import io.zeebe.aeron.service.JobService;
 
 import java.io.File;
 import java.lang.reflect.Array;
@@ -33,32 +33,43 @@ public class ApplicationMain {
       "aeron:udp?term-length=64k|endpoint=localhost:8010";
   private static final String ARCHIVE_CONTROL_RESPONSE_CHANNEL =
       "aeron:udp?term-length=64k|endpoint=localhost:8020";
+  private static final int COUNT = 10_000;
 
   private static ClusteredMediaDriver[] clusteredMediaDrivers =
       new ClusteredMediaDriver[MEMBER_COUNT];
   private static ClusteredServiceContainer[] containers =
       new ClusteredServiceContainer[MEMBER_COUNT];
 
-  public static void main(String args[]) {
+  public static void main(String args[]) throws InterruptedException {
     // init cluster
     init();
 
-  // create client
+    Thread.sleep(1_000);
+    
+    // create client
     final ZbClient zbClient = ZbClient.newClient("localhost:20110,localhost:20111,localhost:20112");
     final JobClient jobClient = zbClient.jobClient();
 
-    // test
-    jobClient.createJob();
-
+    // subscribe
     jobClient.subscribe(
         (job -> {
           System.out.println("Received job on client.");
+          jobClient.completeJob(job);
         }));
+
+    // test
+    new Thread(
+            () -> {
+              for (int i = 0; i < 5; i++) {
+                jobClient.createJob();
+              }
+            })
+        .start();
 
     waitUntilClose();
 
     zbClient.close();
-    
+
     // tear down
     tearDown();
   }
@@ -114,7 +125,7 @@ public class ApplicationMain {
                   .aeronDirectoryName(baseDirName)
                   .archiveContext(archiveCtx.clone())
                   .clusteredServiceDir(new File(baseDirName, "service"))
-                  .clusteredService(new JobCreateService())
+                  .clusteredService(new JobService())
                   .errorHandler(Throwable::printStackTrace)
                   .deleteDirOnStart(true));
     }
@@ -143,10 +154,18 @@ public class ApplicationMain {
     for (int i = 0; i < MEMBER_COUNT; i++) {
       builder
           .append(i) // id
-          .append(',').append("localhost:2011").append(i) // client
-          .append(',').append("localhost:2022").append(i) // member
-          .append(',').append("localhost:2033").append(i) // log
-          .append(',').append("localhost:801").append(i) // archive
+          .append(',')
+          .append("localhost:2011")
+          .append(i) // client
+          .append(',')
+          .append("localhost:2022")
+          .append(i) // member
+          .append(',')
+          .append("localhost:2033")
+          .append(i) // log
+          .append(',')
+          .append("localhost:801")
+          .append(i) // archive
           .append('|');
     }
 

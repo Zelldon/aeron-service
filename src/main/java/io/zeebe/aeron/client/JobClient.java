@@ -48,37 +48,42 @@ public class JobClient {
 
     public void subscribe(Consumer<Job> handler)
     {
-        final MutableInteger messageCount = new MutableInteger();
-        final EgressAdapter adapter =
-                new EgressAdapter(
-                        new EgressListener() {
-                            public void onMessage(
-                                    final long correlationId,
-                                    final long clusterSessionId,
-                                    final long timestamp,
-                                    final DirectBuffer buffer,
-                                    final int offset,
-                                    final int length,
-                                    final Header header) {
+    final EgressAdapter adapter =
+        new EgressAdapter(
+            new EgressListener() {
+              public void onMessage(
+                  final long correlationId,
+                  final long clusterSessionId,
+                  final long timestamp,
+                  final DirectBuffer buffer,
+                  final int offset,
+                  final int length,
+                  final Header header) {
 
-                                // TODO serialize job from response
-                                Job job = new Job();
-                                handler.accept(job);
-                            }
+                int msgId = buffer.getInt(Job.MSG_ID_OFFSET + offset);
 
-                            @Override
-                            public void sessionEvent(long l, long l1, EventCode eventCode, String s) {
-                                System.out.println(s);
-                            }
+                if (msgId == MessageIdentifier.JOB_ASSIGNED.ordinal()) {
+                  Job job = new Job();
+                  job.fromBuffer(buffer, offset, length);
+                  handler.accept(job);
+                } else {
+                  System.out.println("ignored");
+                }
+              }
 
-                            @Override
-                            public void newLeader(long l, long l1, long l2, long l3, long l4, int i, String s) {
-                                System.out.println(s);
-                            }
-                        },
-                        aeronCluster.clusterSessionId(),
-                        aeronCluster.egressSubscription(),
-                        FRAGMENT_LIMIT);
+              @Override
+              public void sessionEvent(long l, long l1, EventCode eventCode, String s) {
+                System.out.println(s);
+              }
+
+              @Override
+              public void newLeader(long l, long l1, long l2, long l3, long l4, int i, String s) {
+                System.out.println(s);
+              }
+            },
+            aeronCluster.clusterSessionId(),
+            aeronCluster.egressSubscription(),
+            FRAGMENT_LIMIT);
 
         new Thread(() -> {
             while (true)
@@ -89,7 +94,28 @@ public class JobClient {
                 }
             }
         }).start();
+
+      final ExpandableArrayBuffer msgBuffer = new ExpandableArrayBuffer();
+      final long msgCorrelationId = aeron.nextCorrelationId();
+      msgBuffer.putInt(0, MessageIdentifier.SUBSCRIBE.ordinal());
+
+      // client sends message
+      while (sessionDecorator.offer(publication, msgCorrelationId, msgBuffer, 0, 4) < 0)
+      {
+        Thread.yield();
+      }
     }
 
 
+  public void completeJob(Job job) {
+
+    final ExpandableArrayBuffer msgBuffer = new ExpandableArrayBuffer();
+    final long msgCorrelationId = aeron.nextCorrelationId();
+    msgBuffer.putInt(0, MessageIdentifier.JOB_COMPLETE.ordinal());
+
+    while (sessionDecorator.offer(publication, msgCorrelationId, msgBuffer, 0, 4) < 0)
+    {
+      Thread.yield();
+    }
+  }
 }
