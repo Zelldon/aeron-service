@@ -27,6 +27,7 @@ import org.agrona.DirectBuffer;
 public class StubClusteredService implements ClusteredService
 {
   protected Cluster cluster;
+  protected Cluster.Role currentRole;
 
   public void onStart(final Cluster cluster)
   {
@@ -88,6 +89,7 @@ public class StubClusteredService implements ClusteredService
   public void onRoleChange(final Cluster.Role newRole)
   {
     System.out.println("Role changes to " + newRole);
+    currentRole = newRole;
   }
 
   public void onReady()
